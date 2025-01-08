@@ -19,6 +19,7 @@
 #define ABYSS 0
 #define WALL 1
 #define FLOOR 2
+#define UNKNOWN 3
 
 typedef uint8_t color_code;
 
@@ -65,6 +66,7 @@ typedef struct ColorMap {
 typedef struct World {
         Map map;
         Map alpha_mask;
+        Map discovered_mask;
         Point camera;
         Entity player;
         Entity *enemies;
@@ -93,4 +95,6 @@ void apply_alpha_map(World *w, Map a);
 void draw_entity(SDL_Renderer *r, Entity e);
 void render_tile(SDL_Renderer *r, uint8_t b, Point p, Map a);
 void render_world(SDL_Renderer *r, World w);
+World load_map(char *filename);
+void update_discovered(World *w);
 
