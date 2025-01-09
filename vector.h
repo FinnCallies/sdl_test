@@ -1,6 +1,6 @@
 #include "point.h"
 
-typedef struct Vector {
+typedef struct {
         int x;
         int y;
 } Vector;
