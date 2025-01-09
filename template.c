@@ -28,20 +28,27 @@ int main(int argc, char *argv[])
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
         World world;
-        if (argc > 1)
-        {
-                world = load_map(argv[1]);
-        }
-        else
-        {
-                world = newWorld(SCREEN_WIDTH * 2, SCREEN_HEIGHT * 2, true);
-                init_world(&world);
+        world = newWorld(SCREEN_WIDTH * 2, SCREEN_HEIGHT * 2, true);
+        init_world(&world);
+
+        // Point temp = newPoint(world.player.p.x - world.camera.x, world.player.p.y - world.camera.y);
+        // calc_alpha_old(&world.alpha_mask, temp);
+        // update_discovered(&world);
+        for(int i = 0; i < SCREEN_HEIGHT; i++) {
+                for(int j = 0; j < SCREEN_WIDTH; j++) {
+                        world.alpha_mask.data[i][j] = 0xff;
+                }
         }
 
+        for(int i = 0; i < world.map.height; i++) {
+                for(int j = 0; j < world.map.width; j++) {
+                        world.map.data[i][j] = FLOOR;
+                }
+        }
 
-        Point temp = newPoint(world.player.p.x - world.camera.x, world.player.p.y - world.camera.y);
-        calc_alpha_old(&world.alpha_mask, temp);
-        update_discovered(&world);
+        for(int i = 0; i < world.map.height; i++) 
+                for(int j = 0; j < world.map.width; j++)
+                        world.discovered_mask.data[i][j] = 0x01;
 
         while (running)
         {
@@ -64,8 +71,6 @@ int main(int argc, char *argv[])
                                 world.player.p.y = 0;
                         else if (world.map.data[world.player.p.y][world.player.p.x] == WALL)
                                 move_down(&world.player);
-                        else
-                                update_discovered(&world);
                 }
                 if (state[SDL_SCANCODE_S])
                 {
@@ -74,8 +79,6 @@ int main(int argc, char *argv[])
                                 world.player.p.y = world.map.height - 1;
                         else if (world.map.data[world.player.p.y][world.player.p.x] == WALL)
                                 move_up(&world.player);
-                        else
-                                update_discovered(&world);
                 }
                 if (state[SDL_SCANCODE_A])
                 {
@@ -84,8 +87,6 @@ int main(int argc, char *argv[])
                                 world.player.p.x = 0;
                         else if (world.map.data[world.player.p.y][world.player.p.x] == WALL)
                                 move_right(&world.player);
-                        else
-                                update_discovered(&world);
                 }
                 if (state[SDL_SCANCODE_D])
                 {
@@ -94,26 +95,20 @@ int main(int argc, char *argv[])
                                 world.player.p.x = world.map.width - 1;
                         else if (world.map.data[world.player.p.y][world.player.p.x] == WALL)
                                 move_left(&world.player);
-                        else
-                                update_discovered(&world);
                 }
 
                 SDL_ResetKeyboard();
 
-                Vector cam2p = pts2vec(world.camera, world.player.p);
-                normalize(&cam2p);
+                cam_track_player(&world);
 
-                if (cam2p.x < 4)
-                        world.camera.x--;
-                else if (cam2p.x > SCREEN_WIDTH - 4 - 1)
-                        world.camera.x++;
-                else if (cam2p.y < 4)
-                        world.camera.y--;
-                else if (cam2p.y > SCREEN_HEIGHT - 4 - 1)
-                        world.camera.y++;
+                for(int i = 0; i < world.map.height; i++)
+                        for(int j = 0; j < world.map.width; j++)
+                                world.map.data[i][j] = FLOOR;
+
+                draw_pts(&world, get_rad(world.player.p, 4));
 
                 Point temp = newPoint(world.player.p.x - world.camera.x, world.player.p.y - world.camera.y);
-                calc_alpha_old(&world.alpha_mask, temp);
+                // calc_alpha_old(&world.alpha_mask, temp);
 
                 // apply_alpha_map(&world, alpha_map);
                 render_world(renderer, world);

@@ -1,5 +1,7 @@
 #include <SDL2/SDL.h>
 #include <stdbool.h>
+#include "map.h"
+#include "vector.h"
 
 #define TILE_HEIGHT 50
 #define TILE_WIDTH 50
@@ -23,16 +25,6 @@
 
 typedef uint8_t color_code;
 
-typedef struct Point {
-        int x;
-        int y;
-} Point;
-
-typedef struct Vector {
-        int x;
-        int y;
-} Vector;
-
 typedef struct Color {
         color_code r;
         color_code g;
@@ -50,12 +42,6 @@ typedef struct Entity {
         Stats s;
         bool collision;
 } Entity;
-
-typedef struct Map {
-        int height;
-        int width;
-        uint8_t **data;
-} Map;
 
 typedef struct ColorMap {
         int height;
@@ -76,13 +62,12 @@ typedef struct World {
 /* FUNCTION PROTOTYPES */
 
 void normalize(Vector *v);
-Vector pts2vec(Point a, Point b);
-void calc_alpha(Map *alpha_map, Point p);
-Point newPoint(int x, int y);
+void calc_alpha_old(Map *alpha_map, Point p);
+void calc_alpha(World *w, Point p);
+Point *get_rad(Point center, uint8_t radius);
 Entity newPlayer(int x, int y, bool c);
 Color new_color(color_code r, color_code g, color_code b);
 Entity newEnemy();
-Map new_map(int width, int height);
 ColorMap newColorMap(int width, int height);
 World newWorld(int width, int height, bool player_collision);
 void move_up(Entity *e);
@@ -97,4 +82,8 @@ void render_tile(SDL_Renderer *r, uint8_t b, Point p, Map a);
 void render_world(SDL_Renderer *r, World w);
 World load_map(char *filename);
 void update_discovered(World *w);
+uint8_t vec2alpha(Vector v);
+void bresenham(Point src, Point dest, World *w);
+void cam_track_player(World *w);
+void draw_pts(World *w, Point *pts);
 

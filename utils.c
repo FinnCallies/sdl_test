@@ -1,25 +1,40 @@
 #include "utils.h"
 
-void normalize(Vector *v)
-{
-        if (v->x < 0)
-                v->x = v->x * -1;
-        if (v->y < 0)
-                v->y = v->y * -1;
-}
 
 // calculate distance from a to b as Vector
-Vector pts2vec(Point a, Point b)
-{
-        Vector ret = {.x = 0, .y = 0};
 
-        ret.x = b.x - a.x;
-        ret.y = b.y - a.y;
+Point *get_rad(Point center, uint8_t radius)
+{
+        int idx = 0;
+        Point *ret = (Point *) calloc(radius * 8, sizeof(Point));
+
+        for(int i = 0; i < radius * 8; i++) {
+                ret[i] = newPoint(-1, -1);
+        }
+
+        for(int i = center.y - radius; i < center.y + radius; i++) {
+                if(i < 0)
+                        continue;
+
+                for(int j = center.x - radius; j < center.x + radius; j++) {
+                        if(j < 0)
+                                continue;
+
+                        Vector v = pts2vec(center, newPoint(j, i));
+                        normalize(&v);
+                        if(v.x == RAD_DARK - 1 || v.y == RAD_DARK - 1 || v.x + v.y == RAD_DARK) {
+                                ret[idx].x = j;
+                                ret[idx].y = i;
+
+                                idx++;
+                        }
+                }
+        }
 
         return ret;
 }
 
-void calc_alpha(Map *alpha_map, Point p)
+void calc_alpha_old(Map *alpha_map, Point p) 
 {
         for (int i = 0; i < alpha_map->height; i++)
         {
@@ -43,15 +58,20 @@ void calc_alpha(Map *alpha_map, Point p)
         }
 }
 
-Map new_map(int width, int height)
+void calc_alpha(World *w, Point p)
 {
-        Map ret = {.width = width, .height = height, .data = NULL};
+        /*
+        */
 
-        ret.data = (uint8_t **)calloc(height, sizeof(uint8_t *));
-        for (int i = 0; i < height; i++)
-                ret.data[i] = (uint8_t *)calloc(width, sizeof(uint8_t));
+        Point *vision_border = get_rad(p, RAD_DARK);
 
-        return ret;
+        for(int i = 0; vision_border[i].x != -1; i++)
+                printf("[ %d, %d ]\n", vision_border[i].x, vision_border[i].y);
+
+        for(int i = 0; i < RAD_DARK * 8 && (vision_border[i].x != -1 && vision_border[i].y != -1);
+i++) {
+                bresenham(p, vision_border[i], w);
+        }
 }
 
 ColorMap newColorMap(int width, int height)
@@ -65,11 +85,6 @@ ColorMap newColorMap(int width, int height)
         return ret;
 }
 
-Point newPoint(int x, int y)
-{
-        Point ret = {.x = x, .y = y};
-        return ret;
-}
 
 Color new_color(color_code r, color_code g, color_code b)
 {
@@ -102,12 +117,6 @@ Entity newEnemy()
         return ret;
 }
 
-void init_map(Map *m, uint8_t v)
-{
-        for (int i = 0; i < (*m).height; i++)
-                for (int j = 0; j < (*m).width; j++)
-                        (*m).data[i][j] = v;
-}
 
 World newWorld(int width, int height, bool player_collision)
 {
@@ -259,12 +268,14 @@ void render_world(SDL_Renderer *r, World w)
         render_entity_in_respect_to(r, w.player, w.camera);
 }
 
+/*
 void render_hud(SDL_Renderer *r, World w)
 {
         Color hp = {.r = 0xff, .g = 0x00, .b = 0x00, .a = 0xff};
         Point pos_hp = newPoint()
             render_rect(r, hp, )
 }
+*/
 
 World load_map(char *filename)
 {
@@ -314,3 +325,70 @@ void update_discovered(World *w)
                         if ((*w).alpha_mask.data[i][j] > NO_LIGHT_ALPHA && (i + (*w).camera.y) >= 0 && (i + (*w).camera.y) < (*w).map.height && (j + (*w).camera.x) >= 0 && (j + (*w).camera.x) < (*w).map.width)
                                 (*w).discovered_mask.data[i + (*w).camera.y][j + (*w).camera.x] = 1;
 }
+
+uint8_t vec2alpha(Vector v)
+{
+        if (v.x < RAD_BRIGHT && v.y < RAD_BRIGHT && v.x + v.y < RAD_BRIGHT + 1)
+                return BRIGHT_LIGHT_ALPHA;
+        else if (v.x < RAD_DIM && v.y < RAD_DIM && v.x + v.y < RAD_DIM + 1)
+                return DIM_LIGHT_ALPHA;
+        else if (v.x < RAD_DARK && v.y < RAD_DARK && v.x + v.y < RAD_DARK + 1)
+                return DARK_LIGHT_ALPHA;
+        else
+                return NO_LIGHT_ALPHA;
+}
+
+void bresenham(Point src, Point dest, World *w)
+{
+        int dx =  abs(dest.x - src.x), sx = src.x < dest.x ? 1 : -1;
+        int dy = -abs(dest.y - src.y), sy = src.y < dest.y ? 1 : -1;
+        int err = dx + dy, e2; /* error value e_xy */
+        Point origin = src;
+
+        while (1) {
+                if((*w).map.data[src.y][src.x] == WALL)
+                        return;
+
+                // set pixel in map
+                // (*w).alpha_mask.data[src.y - (*w).camera.y][src.x - (*w).camera.x]
+                // = vec2alpha(pts2vec(origin, src));
+                
+
+                if (src.x == dest.x && src.y == dest.y) 
+                        break;
+                e2 = 2 * err;
+
+                if (e2 > dy) { 
+                        err += dy; 
+                        src.x += sx; 
+                } /* e_xy+e_x > 0 */
+
+                if (e2 < dx) { 
+                        err += dx; 
+                        src.y += sy; 
+                } /* e_xy+e_y < 0 */
+        }
+}
+
+void cam_track_player(World *w)
+{
+        Vector cam2p = pts2vec((*w).camera, (*w).player.p);
+        normalize(&cam2p);
+
+        if (cam2p.x < 4)
+                (*w).camera.x--;
+        else if (cam2p.x > SCREEN_WIDTH - 4 - 1)
+                (*w).camera.x++;
+        else if (cam2p.y < 4)
+                (*w).camera.y--;
+        else if (cam2p.y > SCREEN_HEIGHT - 4 - 1)
+                (*w).camera.y++;
+}
+
+void draw_pts(World *w, Point *pts)
+{
+        for(int i = 0; pts[i].x != -1; i++) {
+                (*w).map.data[pts[i].y][pts[i].x] = WALL;
+        }
+}
+
